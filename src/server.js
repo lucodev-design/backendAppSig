@@ -13,9 +13,22 @@ dotenv.config();
 
 const app = express();
 
-// Middlewares
+// Lista de orígenes permitidos
+const allowedOrigins = [
+  "http://localhost:5173", // desarrollo local
+  "https://fastidious-naiad-8071bd.netlify.app" // frontend en producción (Netlify)
+];
+
+// Middleware CORS
 app.use(cors({
-  origin: "http://localhost:5173", // luego aquí pones tu frontend en Vercel
+  origin: function (origin, callback) {
+    // Permite llamadas desde herramientas tipo Postman (sin origin)
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error("Not allowed by CORS: " + origin));
+    }
+  },
   methods: ["GET", "POST", "PUT", "DELETE"],
   credentials: true
 }));
@@ -45,5 +58,5 @@ app.get("/ping", (req, res) => {
 // Iniciar servidor
 const PORT = process.env.PORT || 4000;
 app.listen(PORT, () => {
-  console.log(`✅ Servidor corriendo en http://localhost:${PORT}`);
+  console.log(`✅ Servidor corriendo en puerto ${PORT}`);
 });
