@@ -1,40 +1,46 @@
 // CrearUsuario.js
-import mysql from "mysql2/promise";
+import pkg from "pg";
 import bcrypt from "bcryptjs";
+
+const { Pool } = pkg;
+
+// 🔹 Configuración conexión a PostgreSQL
+const pool = new Pool({
+  host: "localhost",   // si estás local, en Render cambiarás
+  user: "postgres",    // tu usuario de postgres
+  password: "tu_password", // 👈 pon la contraseña de postgres
+  database: "sig_db",  // tu base de datos en Postgres
+  port: 5432,          // puerto por defecto de Postgres
+});
 
 async function crearUsuario() {
   try {
-    const connection = await mysql.createConnection({
-      host: "localhost",
-      user: "root",
-      password: "",
-      database: "sig_db"   // 👈 tu base real
-    });
-
     // 🔹 Datos del usuario
     const nombre = "Admin";
     const email = "admin@mail.com";
     const passwordPlano = "123456";
-    const rolId = 1; // 👈 este debe coincidir con el ID de la tabla roles (ej. 1 = admin)
+    const rolId = 1; // 👈 asegúrate que en tu tabla roles ya exista este ID
 
     // 🔹 Encriptar contraseña
     const salt = bcrypt.genSaltSync(10);
     const passwordHash = bcrypt.hashSync(passwordPlano, salt);
 
-    // 🔹 Insertar en usuarios
+    // 🔹 Insertar en usuarios (Postgres usa $1, $2 en lugar de ?)
     const query = `
       INSERT INTO usuarios (nombre, email, password, rol_id)
-      VALUES (?, ?, ?, ?)
+      VALUES ($1, $2, $3, $4)
+      RETURNING id;
     `;
-    await connection.execute(query, [nombre, email, passwordHash, rolId]);
+    const result = await pool.query(query, [nombre, email, passwordHash, rolId]);
 
     console.log("✅ Usuario creado con éxito!");
+    console.log("ID:", result.rows[0].id);
     console.log("Email:", email);
     console.log("Contraseña:", passwordPlano);
 
-    await connection.end();
+    await pool.end();
   } catch (error) {
-    console.error("❌ Error creando usuario:", error);
+    console.error("❌ Error creando usuario:", error.message);
   }
 }
 

@@ -1,3 +1,4 @@
+// auth.controllers.js
 import { pool } from "../db.js";
 import bcrypt from "bcryptjs";
 
@@ -5,24 +6,23 @@ import bcrypt from "bcryptjs";
 export const register = async (req, res) => {
   const { nombre, email, password, rol } = req.body;
 
-  // Validación de campos obligatorios
   if (!nombre || !email || !password) {
     return res.status(400).json({ error: "Faltan datos obligatorios" });
   }
 
   try {
     // Verificar si ya existe un usuario con ese email
-    const [exists] = await pool.query("SELECT id FROM usuarios WHERE email = ?", [email]);
-    if (exists.length > 0) {
+    const exists = await pool.query("SELECT id FROM usuarios WHERE email = $1", [email]);
+    if (exists.rows.length > 0) {
       return res.status(400).json({ error: "El correo ya está registrado" });
     }
 
-    // Hashear la contraseña
+    // Hashear contraseña
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    // Guardar usuario en la BD
+    // Guardar usuario en PostgreSQL
     await pool.query(
-      "INSERT INTO usuarios (nombre, email, password, rol) VALUES (?, ?, ?, ?)",
+      "INSERT INTO usuarios (nombre, email, password, rol) VALUES ($1, $2, $3, $4)",
       [nombre, email, hashedPassword, rol === "admin" ? "admin" : "trabajador"]
     );
 
@@ -37,28 +37,26 @@ export const register = async (req, res) => {
 export const login = async (req, res) => {
   const { email, password } = req.body;
 
-  // Validación de campos obligatorios
   if (!email || !password) {
     return res.status(400).json({ error: "Faltan datos para iniciar sesión" });
   }
 
   try {
-    // Buscar usuario por email
-    const [rows] = await pool.query("SELECT * FROM usuarios WHERE email = ?", [email]);
+    // Buscar usuario
+    const result = await pool.query("SELECT * FROM usuarios WHERE email = $1", [email]);
 
-    if (rows.length === 0) {
+    if (result.rows.length === 0) {
       return res.status(400).json({ error: "Usuario no encontrado" });
     }
 
-    const user = rows[0];
+    const user = result.rows[0];
 
-    // Comparar contraseña
+    // Verificar contraseña
     const valid = await bcrypt.compare(password, user.password);
     if (!valid) {
       return res.status(400).json({ error: "Contraseña incorrecta" });
     }
 
-    // Retornar datos del usuario sin la contraseña
     res.json({
       message: "Login exitoso",
       user: {

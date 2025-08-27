@@ -1,10 +1,15 @@
-import mysql from "mysql2/promise";
+// src/db.js
+import pkg from "pg";
+import dotenv from "dotenv";
 
-export const pool = mysql.createPool({
-  host: "localhost",
-  user: "root",       // tu usuario de MySQL
-  password: "",       // tu contraseña de MySQL (si no tienes, dejar vacío)
-  database: "sig_db",
-  waitForConnections: true,
-  connectionLimit: 10,
+dotenv.config();
+const { Pool } = pkg;
+
+export const pool = new Pool({
+  user: process.env.DB_USER,
+  host: process.env.DB_HOST,
+  database: process.env.DB_NAME,
+  password: process.env.DB_PASS,
+  port: process.env.DB_PORT,
+  ssl: { rejectUnauthorized: false }, // ⚠️ Necesario en Render
 });
